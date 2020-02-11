@@ -9,16 +9,22 @@ import scala.sys.process._
 object Launcher {
 
   def init(stocks: List[String], startDate: String, endDate: String, nodes: Int, forecast: Boolean): Unit = {
+
+
     var stocksListString = ""
     for (i <- stocks.indices)
       stocksListString += stocks(i) + ".txt,"
-    val fw = new FileWriter(new File("/home/spark/Plot/src/main/scala/technicalanalysis/launcher.sh"), false)
+    val launcher = "aws s3 rm s3://smta-data/plot/ --recursive ".!!
+    println("EMR folder deletion:")
+    println(launcher)
+
+    val fw = new FileWriter(new File("src/main/scala/technicalanalysis/launcher.sh"), false)
     fw.write("aws emr create-cluster --name \"SMTA\" --release-label emr-5.29.0 --instance-type m4.large --instance-count " + nodes + " --applications Name=Spark --steps Type=Spark,Name=\"Spark Program\",ActionOnFailure=TERMINATE_CLUSTER,Args=[--class,technicalanalysis.MainApp,s3://smta-data/smta_2.11-0.1.jar,\"" + startDate + "\",\"" + endDate + "\"," + forecast + "," + stocksListString.dropRight(1) + "] --log-uri s3://smta-data/log --use-default-roles --auto-terminate")
     fw.close()
   }
 
   def launch(): Unit = {
-    val launcher = "/bin/sh /home/spark/Plot/src/main/scala/technicalanalysis/launcher.sh".!!
+    val launcher = "/bin/sh src/main/scala/technicalanalysis/launcher.sh".!!
     Thread.sleep(2000)
 
     println("EMR Cluster creation output:")

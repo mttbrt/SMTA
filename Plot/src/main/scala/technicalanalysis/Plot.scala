@@ -1,10 +1,13 @@
 package technicalanalysis
 
-import java.io.{BufferedReader, InputStreamReader}
+import java.io.{BufferedReader, BufferedWriter, File, FileWriter, InputStreamReader}
+
+import scala.reflect.io.Directory
+import java.nio.file.{Files, Paths}
 
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicSessionCredentials}
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
 import org.apache.spark.sql.SparkSession
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -17,6 +20,7 @@ import scalafx.scene.chart.{LineChart, NumberAxis, XYChart}
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.{Alert, Button, CheckBox, Label, Tab, TabPane, TextField}
 import scalafx.scene.layout.{BorderPane, GridPane, HBox, Pane, VBox}
+import technicalanalysis.Plot.{AWS_ACCESS_KEY, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN}
 
 
 object Plot extends JFXApp {
@@ -184,12 +188,11 @@ object Plot extends JFXApp {
             }.showAndWait()
           }
           else { // If everything is ok, plot the results
-            var startDateDT: DateTime = null
-            var endDateDT: DateTime = null
+            var startDateDT:DateTime = null
+            var endDateDT:DateTime = null
             try {
               val dtf = DateTimeFormat.forPattern("yyyy-MM-dd")
               setIndicator("PRICE") //set to true
-
               startDateDT = dtf.parseDateTime(startDate.getText)
               endDateDT = dtf.parseDateTime(endDate.getText)
             } catch {
@@ -206,7 +209,7 @@ object Plot extends JFXApp {
 
             // Compute stocks with AWS
             val awsBackend = Launcher
-            awsBackend.init(stockNames, startDate.getText, endDate.getText, 3, forecast)
+            awsBackend.init(stockNames, startDate.getText, endDate.getText, 8, forecast)
 
             new Alert(AlertType.Information) {
               initOwner(owner)
@@ -216,7 +219,11 @@ object Plot extends JFXApp {
             }.showAndWait()
 
             awsBackend.launch()
-
+            //TODO: CALL HERE A METHOD: SAVE CSVS
+            save_csv_locally(startDateDT,
+              endDateDT,
+              stockNames,
+              indicators.keys.toList) //pass all because i need all calculated files
             // It's all ok
             changeScene(startDateDT,
               endDateDT,
@@ -252,6 +259,33 @@ object Plot extends JFXApp {
     indicators = indicators + (indicator -> !indicators(indicator))
   }
 
+
+  def save_csv_locally(startDate: DateTime, endDate: DateTime, stocks: List[String], indicators_to_calculate: List[String]): Unit = {
+
+    for (i <- stocks.indices) {
+      val directory = new Directory(new File("src/main/resources/plot/"+ stocks(i) + "/"))
+      directory.deleteRecursively()
+      //Create new
+      new java.io.File( "src/main/resources/plot/"+ stocks(i)).mkdirs
+      for (j <- indicators_to_calculate.indices) {
+        //Create new
+        println("plot/" + stocks(i) + "/" + indicators_to_calculate(j) + "/part-00000")
+        val obj = amazonS3Client.getObject("smta-data", "plot/" + stocks(i) + "/" + indicators_to_calculate(j) + "/part-00000")
+        val reader = new BufferedReader(new InputStreamReader(obj.getObjectContent()))
+        var line = reader.readLine
+        var rawData = Seq[String]()
+        while (line != null) {
+          rawData = rawData :+ line + "\n"
+          line = reader.readLine
+        }
+        val file = new File("src/main/resources/plot/"+ stocks(i) + "/" + indicators_to_calculate(j)+".csv")
+        val bw = new BufferedWriter(new FileWriter(file))
+        rawData.foreach(line => bw.write(line))
+        bw.close()
+      }
+    }
+  }
+
   def changeScene(startDate: DateTime, endDate: DateTime, stocks: List[String], indicators_to_calculate: List[String],forecast:Boolean): Unit = {
     stage.scene = new Scene(CHART_WIDTH, CHART_HEIGHT) {
       stylesheets.add("style.css")
@@ -271,16 +305,9 @@ object Plot extends JFXApp {
         chart.minHeight = CHART_HEIGHT * 0.95
 
         for (j <- indicators_to_calculate.indices) {
-          val obj = amazonS3Client.getObject("smta-data", "plot/" + stocks(i) + "/" + indicators_to_calculate(j) + "/part-00000")
-          val reader = new BufferedReader(new InputStreamReader(obj.getObjectContent()))
-          var line = reader.readLine
-          var rawData = Seq(line)
-          while (line != null) {
-            rawData = rawData :+ line
-            line = reader.readLine
-          }
+          val indicator_stock = spark.sparkContext.textFile("src/main/resources/plot/" + stocks(i) + "/" + indicators_to_calculate(j)+".csv").collect()
 
-          val dataT =  rawData.
+          val dataT =  indicator_stock.
             map(_.split(",")). // Split the values by comma character
             map { case Array(x, y) => (x.toDouble, y.toDouble) }
 

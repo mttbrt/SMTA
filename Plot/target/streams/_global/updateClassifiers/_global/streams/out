@@ -1,4 +1,5 @@
-[debug] "not up to date. inChanged = true, force = false
-[debug] Updating ProjectRef(uri("file:/home/spark/Plot/"), "plot")...
-[debug] Done updating ProjectRef(uri("file:/home/spark/Plot/"), "plot")
+[warn] commons-io-2.4-sources.jar no longer exists at /home/spark/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-io/commons-io/2.4/commons-io-2.4-sources.jar
+[debug] "not up to date. inChanged = false, force = false
+[debug] Updating ProjectRef(uri("file:/home/stach/Desktop/SMTA/Plot/"), "plot")...
+[debug] Done updating ProjectRef(uri("file:/home/stach/Desktop/SMTA/Plot/"), "plot")
 [warn] There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings.
