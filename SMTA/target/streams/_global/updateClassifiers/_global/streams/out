@@ -1,4 +1,4 @@
 [debug] "not up to date. inChanged = true, force = false
-[debug] Updating ProjectRef(uri("file:/home/spark/Documents/smta/SMTA/"), "smta")...
-[debug] Done updating ProjectRef(uri("file:/home/spark/Documents/smta/SMTA/"), "smta")
+[debug] Updating ProjectRef(uri("file:/home/stach/Desktop/SMTA/SMTA/"), "smta")...
+[debug] Done updating ProjectRef(uri("file:/home/stach/Desktop/SMTA/SMTA/"), "smta")
 [warn] There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings.

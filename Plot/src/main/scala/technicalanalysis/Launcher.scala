@@ -14,12 +14,12 @@ object Launcher {
     var stocksListString = ""
     for (i <- stocks.indices)
       stocksListString += stocks(i) + ".txt,"
-    val launcher = "aws s3 rm s3://smta-data/plot/ --recursive ".!!
+    val launcher = "aws s3 rm s3://smta-data/plot/ --recursive --exclude \"\"".!!
     println("EMR folder deletion:")
     println(launcher)
 
     val fw = new FileWriter(new File("src/main/scala/technicalanalysis/launcher.sh"), false)
-    fw.write("aws emr create-cluster --name \"SMTA\" --release-label emr-5.29.0 --instance-type m4.large --instance-count " + nodes + " --applications Name=Spark --steps Type=Spark,Name=\"Spark Program\",ActionOnFailure=TERMINATE_CLUSTER,Args=[--class,technicalanalysis.MainApp,s3://smta-data/smta_2.11-0.1.jar,\"" + startDate + "\",\"" + endDate + "\"," + forecast + "," + stocksListString.dropRight(1) + "] --log-uri s3://smta-data/log --use-default-roles --auto-terminate")
+    fw.write("aws emr create-cluster --name \"SMTA\" --release-label emr-5.29.0 --instance-type m4.large --instance-count " + nodes + " --applications Name=Spark --steps Type=Spark,Name=\"Spark Program\",ActionOnFailure=TERMINATE_CLUSTER,Args=[--class,technicalanalysis.MainApp,s3://smta-data/smta_2.11-0.1_basic.jar,\"" + startDate + "\",\"" + endDate + "\"," + forecast + "," + stocksListString.dropRight(1) + "] --log-uri s3://smta-data/log --use-default-roles --auto-terminate")
     fw.close()
   }
 

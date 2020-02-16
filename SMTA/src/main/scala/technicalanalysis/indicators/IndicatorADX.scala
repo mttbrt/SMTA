@@ -12,9 +12,10 @@ object IndicatorADX {
   def computeADX(stockName: String, inputData: RDD[Record]): Unit = {
     //MAIN
     val rdd_array = inputData.collect()
-    val start_date = rdd_array(0).date
-    val end_date = inputData.collect()(rdd_array.length-1).date
-    val adx_list = averageDirectionalIndex(inputData, start_date, end_date)
+    //val start_date = rdd_array(0).date
+    //val end_date = inputData.collect()(rdd_array.length-1).date
+    //val adx_list = averageDirectionalIndex(inputData, start_date, end_date)
+    val adx_list = averageDirectionalIndex(inputData)
     // get all dates binded to adx
     val zipped_rdd_record = inputData.zipWithIndex()
     val date_without_adx = rdd_array.length-adx_list.length
@@ -29,6 +30,8 @@ object IndicatorADX {
   }
 
   private def smoothedAverageTrueIndex(arrayOfRecords: Array[Record], previousATR:Double): Double = {
+    //TODO: SOME PATCH WHEN LENGTH OF ARRAY IS LESS THAN 2
+
     val slided_records_for_previous_days_Close = arrayOfRecords.clone().map(records => records.close).dropRight(1) //this is common to both cases
     val slided_records_for_current_days_High = arrayOfRecords.clone().map(records => records.high).drop(1)
     val slided_records_for_current_days_Low = arrayOfRecords.clone().map(records => records.low).drop(1)
@@ -47,6 +50,8 @@ object IndicatorADX {
     if (previousATR == -1.0) { //caso base
       Utils.roundToDecimal(greaters.sum / greaters.length) //return smoothed
     } else { //caso induttivo
+      //println(arrayOfRecords.length)
+      //arrayOfRecords.foreach(println)
       assert(arrayOfRecords.length == 2) //dopo il primo ATR, bisogna passare solamente il record corrente e quello precedente
       Utils.roundToDecimal(((previousATR * 13) + greaters(0))/ 14)
     }
@@ -141,18 +146,20 @@ object IndicatorADX {
     val DX_values_TOTAL = (RECORD_ITERATOR_FOR_DX_TOTAL zip ATR_VALUES_TOTAL).map(record_and_atr =>
       directionalMovementIndex(positiveNegativeDirectionalIndex(positiveNegativeSmoothedDirectionalMovement(record_and_atr._1.toArray),record_and_atr._2))
     )
-    val ADX_VALUES = DX_values_TOTAL.scanLeft(first_ADX)((prev_ADX, curr_DX) => Utils.roundToDecimal(((prev_ADX*13)+curr_DX)/14))
+    val ADX_VALUES = DX_values_TOTAL.scanLeft(first_ADX)((prev_ADX, curr_DX) =>  Utils.roundToDecimal(((prev_ADX*13)+curr_DX)/14))
     //ADX_VALUES.foreach(println)
     ADX_VALUES
   }
 
-  def averageDirectionalIndex(rdd: RDD[Record], start: DateTime, endTime: DateTime): Array[Double] = {
+  def averageDirectionalIndex(rdd: RDD[Record]): Array[Double] = {
     //WARMUP
     //get filtered RDD basing on period
-    val rdd_filtered = rdd.filter(record => record.date.isAfter(start) && record.date.isBefore(endTime))
-    assert(rdd_filtered.count()>=29) //this index require at least 29 days
-    val first_ADX_last_ATR = getFirstADXAndLastATR(rdd_filtered)
-    val all_ADX = getRemainingADX(rdd_filtered,first_ADX_last_ATR._1, first_ADX_last_ATR._2)
+    //val rdd_filtered = rdd.filter(record => record.date.isAfter(start) && record.date.isBefore(endTime))
+    //val t = rdd.count()
+    //println(t)
+    assert(rdd.count()>=29) //this index require at least 29 days
+    val first_ADX_last_ATR = getFirstADXAndLastATR(rdd)
+    val all_ADX = getRemainingADX(rdd,first_ADX_last_ATR._1, first_ADX_last_ATR._2)
     all_ADX
   }
 

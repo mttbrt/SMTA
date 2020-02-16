@@ -22,6 +22,8 @@ import scalafx.scene.control.{Alert, Button, CheckBox, Label, Tab, TabPane, Text
 import scalafx.scene.layout.{BorderPane, GridPane, HBox, Pane, VBox}
 import technicalanalysis.Plot.{AWS_ACCESS_KEY, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN}
 
+import scala.io.Source
+
 
 object Plot extends JFXApp {
 
@@ -191,10 +193,35 @@ object Plot extends JFXApp {
             var startDateDT:DateTime = null
             var endDateDT:DateTime = null
             try {
-              val dtf = DateTimeFormat.forPattern("yyyy-MM-dd")
-              setIndicator("PRICE") //set to true
-              startDateDT = dtf.parseDateTime(startDate.getText)
-              endDateDT = dtf.parseDateTime(endDate.getText)
+               val dtf = DateTimeFormat.forPattern("yyyy-MM-dd")
+               setIndicator("PRICE") //set to true
+               startDateDT = dtf.parseDateTime(startDate.getText)
+               endDateDT = dtf.parseDateTime(endDate.getText)
+
+               // Set Parameters
+               val stockNames = stocksTextBox.getText.split(",").map(_.trim).toList
+
+             // Compute stocks with AWS
+             val awsBackend = Launcher
+             awsBackend.init(stockNames, startDate.getText, endDate.getText, 3, forecast)
+
+             new Alert(AlertType.Information) {
+               initOwner(owner)
+               title = "Creating and launching AWS cluster"
+               headerText = "AWS is computing..."
+               contentText = "Please wait, the result will appear in a few minutes."
+             }.showAndWait()
+
+             awsBackend.launch()
+               save_csv_locally(startDateDT,
+                 endDateDT,
+                 stockNames,
+                 indicators.keys.toList) //pass all because i need all calculated files
+               // It's all ok
+               changeScene(startDateDT,
+                 endDateDT,
+                 stockNames,
+                 indicators.filter(item => item._2).keys.toList,forecast)
             } catch {
               case x: Exception => new Alert(AlertType.Error) {
                 println(x)
@@ -204,31 +231,7 @@ object Plot extends JFXApp {
                 contentText = "Date format: YYYY-MM-dd"
               }.showAndWait()
             }
-            // Set Parameters
-            val stockNames = stocksTextBox.getText.split(",").map(_.trim).toList
 
-            // Compute stocks with AWS
-            val awsBackend = Launcher
-            awsBackend.init(stockNames, startDate.getText, endDate.getText, 8, forecast)
-
-            new Alert(AlertType.Information) {
-              initOwner(owner)
-              title = "Creating and launching AWS cluster"
-              headerText = "AWS is computing..."
-              contentText = "Please wait, the result will appear in a few minutes."
-            }.showAndWait()
-
-            awsBackend.launch()
-            //TODO: CALL HERE A METHOD: SAVE CSVS
-            save_csv_locally(startDateDT,
-              endDateDT,
-              stockNames,
-              indicators.keys.toList) //pass all because i need all calculated files
-            // It's all ok
-            changeScene(startDateDT,
-              endDateDT,
-              stockNames,
-              indicators.filter(item => item._2).keys.toList,forecast)
           }
         }
       }
@@ -258,7 +261,6 @@ object Plot extends JFXApp {
   def setIndicator(indicator: String): Unit = {
     indicators = indicators + (indicator -> !indicators(indicator))
   }
-
 
   def save_csv_locally(startDate: DateTime, endDate: DateTime, stocks: List[String], indicators_to_calculate: List[String]): Unit = {
 
@@ -305,11 +307,15 @@ object Plot extends JFXApp {
         chart.minHeight = CHART_HEIGHT * 0.95
 
         for (j <- indicators_to_calculate.indices) {
-          val indicator_stock = spark.sparkContext.textFile("src/main/resources/plot/" + stocks(i) + "/" + indicators_to_calculate(j)+".csv").collect()
+          //TODO: read not from spark
+          val src = Source.fromFile("src/main/resources/plot/" + stocks(i) + "/" + indicators_to_calculate(j)+".csv")
 
-          val dataT =  indicator_stock.
+          //val indicator_stock = spark.sparkContext.textFile("src/main/resources/plot/" + stocks(i) + "/" + indicators_to_calculate(j)+".csv").collect()
+
+          val dataT =  src.getLines().
             map(_.split(",")). // Split the values by comma character
-            map { case Array(x, y) => (x.toDouble, y.toDouble) }
+            map { case Array(x, y) => (x.toDouble, y.toDouble) }.toArray
+
 
           val max = dataT.reduce((acc, value) => { if (acc._2 < value._2) value else acc })
           val min = dataT.reduce((acc, value) => { if (acc._2 > value._2) value else acc })
@@ -433,5 +439,6 @@ object Plot extends JFXApp {
       root = rootPane
     }
   }
+
 
 }

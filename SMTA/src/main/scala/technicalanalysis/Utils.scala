@@ -27,12 +27,14 @@ object Utils {
   }
 
   def writeToFile(filename: String, data: RDD[String]): Unit = {
-    data.coalesce(1).saveAsTextFile("s3://smta-data/plot/" + filename)
-//    data.coalesce(1).saveAsTextFile("/home/spark/Documents/smta/SMTA/src/main/resources/plot/" + filename)
+    //data.coalesce(1).saveAsTextFile("s3://smta-data/plot/" + filename)
+    data.coalesce(1).saveAsTextFile("src/main/resources/plot/" + filename)
   }
 
   def roundToDecimal(value: Double): Double = {
-    BigDecimal(value).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
+    val s = math pow (10, 2); (math round value * s) / s
+    s
+    //BigDecimal(value).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
   }
 
   def time[R](block: => R): R = {

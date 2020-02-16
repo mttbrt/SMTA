@@ -61,8 +61,8 @@ object IndicatorMACD {
   def forecastMACD(rdd:RDD[Record], period:Int, forecast:Int): Double = {
     val final_macd = this.final_macd
     val array_rdd = rdd.collect()
-    val critical_moments_BB = final_macd.filter(record => record._3 == record._4)
-    val accuracy_MACD = critical_moments_BB.map(record => {
+    val critical_moments_MACD = final_macd.filter(record => record._3 == record._4)
+    val accuracy_MACD = critical_moments_MACD.map(record => {
       val days_before_last_adx = spark.sparkContext.parallelize(array_rdd)
         .filter(record_inner => record_inner.date.isBefore(record._1))
         .zipWithIndex()
